@@ -8,7 +8,7 @@ android {
     sourceSets {
         getByName("main") {
             manifest.srcFile("app/src/main/AndroidManifest.xml")
-            java.srcDirs("src/main/java")
+            java.srcDirs("app/src/main/app/src/main/java")
         }
     }
     namespace = "com.cityseva.dhule"
