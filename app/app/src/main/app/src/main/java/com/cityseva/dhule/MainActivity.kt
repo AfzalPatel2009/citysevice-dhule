@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun CitySevaApp() {
+    val context = LocalContext.current
     var hindi by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Service?>(null) }
     var customer by remember { mutableStateOf("") }
