@@ -4,13 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-android {    
-    sourceSets {
-        getByName("main") {
-            manifest.srcFile("app/src/main/AndroidManifest.xml")
-            java.srcDirs("app/src/main/app/src/main/java")
-        }
-    }
+android {
     namespace = "com.cityseva.dhule"
     compileSdk = 35
 
