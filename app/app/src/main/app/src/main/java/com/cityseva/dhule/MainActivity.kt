@@ -1,8 +1,8 @@
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.ui.platform.LocalContext
+
 package com.cityseva.dhule
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun CitySevaApp() {
     val context = LocalContext.current
+
     var hindi by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Service?>(null) }
     var customer by remember { mutableStateOf("") }
@@ -177,6 +179,7 @@ fun CitySevaApp() {
                                 Text(if (hindi) "नाम" else "Your name")
                             }
                         )
+
                         OutlinedTextField(
                             value = phone,
                             onValueChange = {
@@ -188,6 +191,7 @@ fun CitySevaApp() {
                                 Text(if (hindi) "मोबाइल नंबर" else "Mobile number")
                             }
                         )
+
                         OutlinedTextField(
                             value = address,
                             onValueChange = { address = it },
@@ -205,34 +209,32 @@ fun CitySevaApp() {
                                 phone.matches(Regex("[6-9][0-9]{9}")) &&
                                 address.isNotBlank()
                             ) {
-        val message = """
-            New CitySeva Dhule Booking
+                                val message = """
+                                    New CitySeva Dhule Booking
 
-            Service: ${service.english}
-            Customer Name: $customer
-            Mobile Number: $phone
-            Address: $address
+                                    Service: ${service.english}
+                                    Customer Name: $customer
+                                    Mobile Number: $phone
+                                    Address: $address
+                                """.trimIndent()
 
-            Please contact me regarding this booking.
-        """.trimIndent()
+                                val whatsappUrl =
+                                    "https://wa.me/919511926356?text=${Uri.encode(message)}"
 
-        val whatsappUrl =
-            "https://wa.me/919511926356?text=${Uri.encode(message)}"
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse(whatsappUrl)
+                                )
 
-        val intent = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse(whatsappUrl)
-        )
+                                context.startActivity(intent)
 
-        context.startActivity(intent)
-
-        bookings.add("${service.english} – $customer")
-        selected = null
-        customer = ""
-        phone = ""
-        address = ""
-    }
-}
+                                bookings.add("${service.english} – $customer")
+                                selected = null
+                                customer = ""
+                                phone = ""
+                                address = ""
+                            }
+                        }
                     ) {
                         Text(if (hindi) "बुक करें" else "Book now")
                     }
