@@ -205,13 +205,34 @@ fun CitySevaApp() {
                                 phone.matches(Regex("[6-9][0-9]{9}")) &&
                                 address.isNotBlank()
                             ) {
-                                bookings.add("${service.english} – $customer")
-                                selected = null
-                                customer = ""
-                                phone = ""
-                                address = ""
-                            }
-                        }
+        val message = """
+            New CitySeva Dhule Booking
+
+            Service: ${service.english}
+            Customer Name: $customer
+            Mobile Number: $phone
+            Address: $address
+
+            Please contact me regarding this booking.
+        """.trimIndent()
+
+        val whatsappUrl =
+            "https://wa.me/919511926356?text=${Uri.encode(message)}"
+
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse(whatsappUrl)
+        )
+
+        context.startActivity(intent)
+
+        bookings.add("${service.english} – $customer")
+        selected = null
+        customer = ""
+        phone = ""
+        address = ""
+    }
+}
                     ) {
                         Text(if (hindi) "बुक करें" else "Book now")
                     }
