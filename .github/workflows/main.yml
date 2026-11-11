@@ -51,6 +51,13 @@ jobs:
             -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" \
             --stacktrace \
             assembleDebug
+            
+      - name: Generate SHA-1 Fingerprint
+        run: |
+          echo "Generating Firebase SHA-1..."
+          gradle --no-daemon signingReport | tee signing-report.txt
+          grep -E "Variant:|SHA1:" signing-report.txt
+
 
       - name: Verify APK
         run: |
