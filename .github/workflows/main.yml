@@ -36,6 +36,10 @@ jobs:
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
           yes | sdkmanager --licenses
 
+      - name: Generate SHA-1 and SHA-256
+        run: |
+          gradle --no-daemon --max-workers=2 signingReport
+
       - name: Build APK
         run: gradle --no-daemon --max-workers=2 -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m" assembleDebug
 
@@ -44,3 +48,4 @@ jobs:
         with:
           name: CitySeva-Dhule-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          
