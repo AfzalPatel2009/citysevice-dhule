@@ -37,25 +37,25 @@ jobs:
 
       - name: Check Project Files
         run: |
-          echo "Checking project structure..."
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
-          echo "All required files found."
 
-      - name: Build Debug APK
+      - name: Build APK with Increased Memory
         run: |
-          gradle --no-daemon --stacktrace assembleDebug
+          gradle \
+            --no-daemon \
+            --max-workers=2 \
+            --no-parallel \
+            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" \
+            --stacktrace \
+            assembleDebug
 
-      - name: Check APK
+      - name: Verify APK
         run: |
-          APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
-          if [ -z "$APK" ]; then
-            echo "APK file not generated!"
-            exit 1
-          fi
-          echo "APK generated successfully: $APK"
+          ls -lh app/build/outputs/apk/debug/
+          test -f app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
