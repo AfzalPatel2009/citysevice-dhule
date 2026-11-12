@@ -1,4 +1,3 @@
-
 package com.cityseva.dhule
 
 import android.content.Intent
@@ -6,7 +5,10 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,7 +35,8 @@ private val Green = Color(0xFF166534)
 data class Service(
     val english: String,
     val hindi: String,
-    val emoji: String
+    val emoji: String,
+    val gallery: List<Int>
 )
 
 class MainActivity : ComponentActivity() {
@@ -130,12 +135,30 @@ fun CitySevaApp(activity: MainActivity) {
     }
 
     val services = listOf(
-        Service("Party Decoration", "पार्टी सजावट", "🎈"),
-        Service("House Cleaning", "घर की सफाई", "🧹"),
-        Service("Washing Service", "कपड़े धोना", "👕"),
-        Service("Painting Contract", "पेंटिंग", "🎨"),
-        Service("AC Repair", "एसी रिपेयर", "❄️"),
-        Service("Plumbing & Electrical", "प्लंबिंग और इलेक्ट्रिकल", "🔧")
+        Service(
+            "Party Decoration", "पार्टी सजावट", "🎈",
+            listOf(R.drawable.party_01, R.drawable.party_02, R.drawable.party_03, R.drawable.party_04, R.drawable.party_05)
+        ),
+        Service(
+            "House Cleaning", "घर की सफाई", "🧹",
+            listOf(R.drawable.cleaning_01, R.drawable.cleaning_02, R.drawable.cleaning_03, R.drawable.cleaning_04, R.drawable.cleaning_05)
+        ),
+        Service(
+            "Washing Service", "कपड़े धोना", "👕",
+            listOf(R.drawable.laundry_01, R.drawable.laundry_02, R.drawable.laundry_03, R.drawable.laundry_04, R.drawable.laundry_05)
+        ),
+        Service(
+            "Painting Contract", "पेंटिंग", "🎨",
+            listOf(R.drawable.painting_01, R.drawable.painting_02, R.drawable.painting_03, R.drawable.painting_04, R.drawable.painting_05)
+        ),
+        Service(
+            "AC Repair", "एसी रिपेयर", "❄️",
+            listOf(R.drawable.ac_01, R.drawable.ac_02, R.drawable.ac_03, R.drawable.ac_04, R.drawable.ac_05)
+        ),
+        Service(
+            "Plumbing & Electrical", "प्लंबिंग और इलेक्ट्रिकल", "🔧",
+            listOf(R.drawable.plumbing_01, R.drawable.plumbing_02, R.drawable.plumbing_03, R.drawable.plumbing_04, R.drawable.plumbing_05)
+        )
     )
 
     MaterialTheme(colorScheme = lightColorScheme(primary = Green)) {
@@ -315,19 +338,28 @@ fun CitySevaApp(activity: MainActivity) {
                             elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Row(
-                                Modifier.padding(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(15.dp)
+                                Modifier.padding(14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Text(service.emoji, fontSize = 30.sp)
-                                Column {
+                                Image(
+                                    painter = painterResource(id = service.gallery.first()),
+                                    contentDescription = service.english,
+                                    modifier = Modifier.size(width = 104.dp, height = 88.dp),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Column(Modifier.weight(1f)) {
                                     Text(
                                         if (hindi) service.hindi else service.english,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
                                     )
+                                    Spacer(Modifier.height(6.dp))
                                     Text(
                                         if (hindi) "बुक करने के लिए टैप करें"
                                         else "Tap to book",
-                                        color = Green
+                                        color = Green,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp
                                     )
                                 }
                             }
@@ -356,6 +388,24 @@ fun CitySevaApp(activity: MainActivity) {
                     },
                     text = {
                         Column {
+                            Text(
+                                if (hindi) "फोटो देखें" else "Work photos"
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                service.gallery.forEachIndexed { index, imageRes ->
+                                    Image(
+                                        painter = painterResource(id = imageRes),
+                                        contentDescription = "${service.english} work sample ${index + 1}",
+                                        modifier = Modifier.size(width = 150.dp, height = 108.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(14.dp))
                             OutlinedTextField(
                                 value = customer,
                                 onValueChange = { customer = it },
