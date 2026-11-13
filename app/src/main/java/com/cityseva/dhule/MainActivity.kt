@@ -112,6 +112,48 @@ private fun CitySevaApp() {
 
     var bookings by remember { mutableStateOf(listOf<Booking>()) }
     var search by remember { mutableStateOf("") }
+    var sessionCheckComplete by remember { mutableStateOf(false) }
+
+    // Restore the Firebase Authentication session when the app is reopened.
+    LaunchedEffect(Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            sessionCheckComplete = true
+        } else {
+            FirebaseFirestore.getInstance().collection("users")
+                .document(currentUser.uid)
+                .get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        val savedName = doc.getString("name") ?: ""
+                        val savedPhone = doc.getString("phoneNumber") ?: ""
+                        val savedRole = doc.getString("role")?.uppercase(Locale.ROOT)
+                        val isRetailer = savedRole == UserRole.RETAILER.name
+                        val isActive = doc.getBoolean("active") ?: false
+
+                        customerName = savedName
+                        mobile = savedPhone
+                        bookingMobile = savedPhone
+                        role = when (savedRole) {
+                            UserRole.RETAILER.name -> UserRole.RETAILER
+                            UserRole.ADMIN.name -> UserRole.ADMIN
+                            else -> UserRole.CUSTOMER
+                        }
+                        page = if (isRetailer && !isActive) Page.PENDING else Page.HOME
+                    } else {
+                        // A Firebase Auth user without a profile must sign in/register again.
+                        FirebaseAuth.getInstance().signOut()
+                        page = Page.HOME
+                    }
+                    sessionCheckComplete = true
+                }
+                .addOnFailureListener {
+                    // Keep the Firebase session; do not silently create a duplicate account.
+                    sessionCheckComplete = true
+                    Toast.makeText(context, "Profile load nahi hui. Internet aur Firestore Rules check karein.", Toast.LENGTH_LONG).show()
+                }
+        }
+    }
 
     MaterialTheme(
         colorScheme = lightColorScheme(
