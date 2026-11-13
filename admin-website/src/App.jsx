@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged,
-  signOut, getIdTokenResult
+  onAuthStateChanged, signOut, getIdTokenResult, signInWithEmailAndPassword
 } from 'firebase/auth'
 import {
   collection, doc, onSnapshot, query, orderBy, limit, updateDoc,
@@ -38,12 +37,9 @@ function App() {
   const [authReady, setAuthReady] = useState(false)
   const [adminAllowed, setAdminAllowed] = useState(false)
   const [authError, setAuthError] = useState('')
-  const [phone, setPhone] = useState('+91')
-  const [otp, setOtp] = useState('')
-  const [confirmation, setConfirmation] = useState(null)
-  const [sending, setSending] = useState(false)
+  const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
   const [verifying, setVerifying] = useState(false)
-  const [captcha, setCaptcha] = useState(null)
   const [section, setSection] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [users, setUsers] = useState([])
@@ -101,45 +97,32 @@ function App() {
     return list.filter(x => [getName(x), getPhone(x), x.id, x.service, x.address, x.status].filter(Boolean).join(' ').toLowerCase().includes(q))
   }, [section, retailers, customers, requests, search])
 
-  async function sendOtp(e) {
+  async function loginWithPassword(e) {
     e.preventDefault()
     setAuthError('')
-    if (!/^\+\d{10,15}$/.test(phone.replace(/\s/g, ''))) {
-      setAuthError('Country code ke saath valid mobile number likho. Example: +919876543210')
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setAuthError('Valid 10-digit mobile number enter karein.')
+      return
+    }
+    if (password.length < 6) {
+      setAuthError('Password kam se kam 6 characters ka hona chahiye.')
       return
     }
     try {
-      setSending(true)
-      let verifier = captcha
-      if (!verifier) {
-        verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'normal' })
-        setCaptcha(verifier)
-      }
-      const result = await signInWithPhoneNumber(auth, phone.replace(/\s/g, ''), verifier)
-      setConfirmation(result)
-      setToast('OTP bhej diya gaya hai.')
-    } catch (e) {
-      setAuthError(e.message || 'OTP send nahi ho paya.')
-      if (captcha) { try { captcha.clear() } catch {} ; setCaptcha(null) }
-    } finally { setSending(false) }
-  }
-
-  async function verifyOtp(e) {
-    e.preventDefault()
-    if (!confirmation || otp.trim().length < 6) return
-    try {
       setVerifying(true)
-      const result = await confirmation.confirm(otp.trim())
+      const emailAlias = `91${phone}@cityseva.app`
+      const result = await signInWithEmailAndPassword(auth, emailAlias, password)
       const token = await getIdTokenResult(result.user, true)
       if (token.claims.admin !== true) {
         await signOut(auth)
-        setAuthError('Login ho gaya, lekin is number ko admin permission nahi di gayi hai.')
+        setAuthError('Login details sahi hain, lekin is account ko admin permission nahi di gayi hai.')
       } else {
         setAdminAllowed(true)
         setAuthError('')
       }
-    } catch (e) { setAuthError(e.message || 'OTP verify nahi hua.') }
-    finally { setVerifying(false) }
+    } catch (e) {
+      setAuthError('Mobile number ya password galat hai. ' + (e.message || ''))
+    } finally { setVerifying(false) }
   }
 
   async function changeRetailer(id, approve) {
@@ -165,7 +148,7 @@ function App() {
   }
 
   if (!authReady) return <div className="loading-screen"><div className="loader-mark">C</div><LoaderCircle className="spin" size={22}/><span>Secure dashboard loading…</span></div>
-  if (!user || !adminAllowed) return <Login phone={phone} setPhone={setPhone} otp={otp} setOtp={setOtp} confirmation={confirmation} sendOtp={sendOtp} verifyOtp={verifyOtp} sending={sending} verifying={verifying} error={authError} onReset={() => { setConfirmation(null); setOtp(''); setAuthError('') }} />
+  if (!user || !adminAllowed) return <Login phone={phone} setPhone={setPhone} password={password} setPassword={setPassword} onSubmit={loginWithPassword} verifying={verifying} error={authError} />
 
   return <div className="app-shell">
     {sidebarOpen && <div className="mobile-scrim" onClick={() => setSidebarOpen(false)} />}
@@ -189,14 +172,13 @@ function App() {
   </div>
 }
 
-function Login({ phone, setPhone, otp, setOtp, confirmation, sendOtp, verifyOtp, sending, verifying, error, onReset }) {
+function Login({ phone, setPhone, password, setPassword, onSubmit, verifying, error }) {
   return <div className="login-page"><div className="login-decoration deco-one"/><div className="login-decoration deco-two"/>
     <div className="login-brand"><div className="brand-icon">C</div><div><strong>CitySeva</strong><span>DHULE · ADMIN</span></div></div>
-    <div className="login-card"><div className="login-icon"><ShieldCheck size={25}/></div><div className="eyebrow">PRIVATE ADMINISTRATOR ACCESS</div><h1>Welcome back.</h1><p>Sign in to manage your CitySeva operations securely.</p>
-      {!confirmation ? <form onSubmit={sendOtp}><label>Admin mobile number</label><div className="phone-field"><Phone size={17}/><input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+919876543210" autoComplete="tel" /></div><div id="recaptcha-container" className="recaptcha-slot"/><button className="primary-btn" disabled={sending}>{sending ? <LoaderCircle className="spin" size={18}/> : null}Send secure OTP <span>→</span></button></form>
-      : <form onSubmit={verifyOtp}><label>6-digit verification code</label><div className="otp-field"><LockKeyhole size={17}/><input value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="Enter OTP" inputMode="numeric" autoComplete="one-time-code"/></div><button className="primary-btn" disabled={verifying || otp.length !== 6}>{verifying ? <LoaderCircle className="spin" size={18}/> : null}Verify & continue <span>→</span></button><button type="button" className="text-btn" onClick={onReset}>Change mobile number</button></form>}
+    <div className="login-card"><div className="login-icon"><ShieldCheck size={25}/></div><div className="eyebrow">PRIVATE ADMINISTRATOR ACCESS</div><h1>Welcome back.</h1><p>Sign in with your registered mobile number and password.</p>
+      <form onSubmit={onSubmit}><label>Admin mobile number</label><div className="phone-field"><Phone size={17}/><span>+91</span><input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0,10))} placeholder="9876543210" autoComplete="tel" /></div><label>Password</label><div className="phone-field"><LockKeyhole size={17}/><input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" autoComplete="current-password" /></div><button className="primary-btn" disabled={verifying}>{verifying ? <LoaderCircle className="spin" size={18}/> : null}Login securely <span>→</span></button></form>
       {error && <div className="login-error"><XCircle size={16}/>{error}</div>}
-      <div className="login-foot"><ShieldCheck size={15}/> Only authorized administrators can enter</div>
+      <div className="login-foot"><ShieldCheck size={15}/> Only authorized administrators can enter · No OTP/SMS</div>
     </div><div className="login-bottom">CITYSEVA DHULE <span>·</span> OPERATIONS CONSOLE</div>
   </div>
 }

@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,13 +29,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import java.util.Locale
 
 private val Navy = Color(0xFF14265C)
 private val Blue = Color(0xFF2855D9)
@@ -48,7 +56,8 @@ private data class ServiceItem(
     val name: String,
     val subtitle: String,
     val emoji: String,
-    val price: String
+    val price: String,
+    val images: List<Int>
 )
 
 private data class Booking(
@@ -61,12 +70,12 @@ private data class Booking(
 )
 
 private enum class Page {
-    HOME, ROLE, PHONE, OTP, PENDING,
+    HOME, ROLE, LOGIN, PENDING,
     GALLERY, BOOKING, BOOKINGS, ACCOUNT, SETTINGS
 }
 
 private enum class UserRole {
-    CUSTOMER, RETAILER
+    CUSTOMER, RETAILER, ADMIN
 }
 
 class MainActivity : ComponentActivity() {
@@ -84,12 +93,12 @@ private fun CitySevaApp() {
     val context = LocalContext.current
 
     val services = listOf(
-        ServiceItem("Party Decoration", "Birthdays, weddings & events", "🎈", "Packages from ₹999"),
-        ServiceItem("House Cleaning", "Deep cleaning & regular cleaning", "🧹", "Packages from ₹499"),
-        ServiceItem("Washing Service", "Laundry, ironing & pickup", "👕", "Packages from ₹99"),
-        ServiceItem("Painting Contract", "Home and office painting", "🎨", "Get a free estimate"),
-        ServiceItem("AC Repair", "Service, repair & installation", "❄️", "Inspection available"),
-        ServiceItem("Plumbing & Electrical", "Trusted home maintenance", "🔧", "Book a technician")
+        ServiceItem("Party Decoration", "Birthdays, weddings & events", "🎈", "Packages from ₹999", listOf(R.drawable.party_01, R.drawable.party_02, R.drawable.party_03, R.drawable.party_04, R.drawable.party_05)),
+        ServiceItem("House Cleaning", "Deep cleaning & regular cleaning", "🧹", "Packages from ₹499", listOf(R.drawable.cleaning_01, R.drawable.cleaning_02, R.drawable.cleaning_03, R.drawable.cleaning_04, R.drawable.cleaning_05)),
+        ServiceItem("Washing Service", "Laundry, ironing & pickup", "👕", "Packages from ₹99", listOf(R.drawable.laundry_01, R.drawable.laundry_02, R.drawable.laundry_03, R.drawable.laundry_04, R.drawable.laundry_05)),
+        ServiceItem("Painting Contract", "Home and office painting", "🎨", "Get a free estimate", listOf(R.drawable.painting_01, R.drawable.painting_02, R.drawable.painting_03, R.drawable.painting_04, R.drawable.painting_05)),
+        ServiceItem("AC Repair", "Service, repair & installation", "❄️", "Inspection available", listOf(R.drawable.ac_01, R.drawable.ac_02, R.drawable.ac_03, R.drawable.ac_04, R.drawable.ac_05)),
+        ServiceItem("Plumbing & Electrical", "Trusted home maintenance", "🔧", "Book a technician", listOf(R.drawable.plumbing_01, R.drawable.plumbing_02, R.drawable.plumbing_03, R.drawable.plumbing_04, R.drawable.plumbing_05))
     )
 
     var page by remember { mutableStateOf(Page.HOME) }
@@ -98,7 +107,6 @@ private fun CitySevaApp() {
 
     var mobile by remember { mutableStateOf("") }
     var bookingMobile by remember { mutableStateOf("") }
-    var otp by remember { mutableStateOf("") }
     var customerName by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
 
@@ -179,31 +187,19 @@ private fun CitySevaApp() {
                     Page.ROLE -> RoleScreen(
                         onSelect = {
                             role = it
-                            page = Page.PHONE
+                            page = Page.LOGIN
                         },
                         onBack = { page = Page.HOME }
                     )
 
-                    Page.PHONE -> PhoneScreen(
-                        role,
-                        mobile,
-                        { mobile = it },
+                    Page.LOGIN -> PasswordAuthScreen(
+                        role = role,
                         onBack = { page = Page.ROLE },
-                        onContinue = { page = Page.OTP }
-                    )
-
-                    Page.OTP -> OtpScreen(
-                        mobile,
-                        otp,
-                        { otp = it },
-                        onBack = { page = Page.PHONE },
-                        onVerify = {
-                            if (role == UserRole.RETAILER) {
-                                page = Page.PENDING
-                            } else {
-                                bookingMobile = mobile
-                                page = Page.ACCOUNT
-                            }
+                        onAuthenticated = { name, phone, isPending ->
+                            customerName = name
+                            mobile = phone
+                            bookingMobile = phone
+                            page = if (isPending) Page.PENDING else Page.HOME
                         }
                     )
 
@@ -441,15 +437,14 @@ private fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Box(
-                        Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFEFF3FF)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(service.emoji, fontSize = 29.sp)
-                    }
+                    Image(
+                        painter = painterResource(service.images.first()),
+                        contentDescription = service.name,
+                        modifier = Modifier
+                            .size(76.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.Crop
+                    )
 
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -538,6 +533,15 @@ private fun RoleScreen(
             onSelect(UserRole.RETAILER)
         }
 
+        RoleCard(
+            "Admin",
+            "Authorized CitySeva administrator access",
+            "🛡️",
+            "Admin login"
+        ) {
+            onSelect(UserRole.ADMIN)
+        }
+
         Text(
             "Retailer accounts become active only after admin approval.",
             color = Blue,
@@ -577,128 +581,199 @@ private fun RoleCard(
 }
 
 @Composable
-private fun PhoneScreen(
+private fun PasswordAuthScreen(
     role: UserRole,
-    mobile: String,
-    onMobile: (String) -> Unit,
     onBack: () -> Unit,
-    onContinue: () -> Unit
+    onAuthenticated: (String, String, Boolean) -> Unit
 ) {
+    val auth = remember { FirebaseAuth.getInstance() }
+    val db = remember { FirebaseFirestore.getInstance() }
+    val isAdmin = role == UserRole.ADMIN
+    var isRegister by remember { mutableStateOf(role != UserRole.ADMIN) }
+    var name by remember { mutableStateOf("") }
+    var mobile by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+
+    fun authEmail(phone: String): String = "91${phone}@cityseva.app"
+
+    fun finishLogin(uid: String) {
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { doc ->
+                val savedRole = doc.getString("role")?.uppercase(Locale.ROOT)
+                val expectedRole = role.name
+                val phone = doc.getString("phoneNumber") ?: mobile
+                val savedName = doc.getString("name") ?: ""
+                val active = doc.getBoolean("active") ?: false
+                if (savedRole != expectedRole) {
+                    auth.signOut()
+                    busy = false
+                    error = "Is mobile number ka account ${savedRole ?: "unknown"} role ka hai. Sahi login type chunein."
+                } else if (isAdmin) {
+                    auth.currentUser?.getIdToken(true)?.addOnSuccessListener { token ->
+                        if (token.claims["admin"] == true) {
+                            busy = false
+                            onAuthenticated(savedName, phone, false)
+                        } else {
+                            auth.signOut()
+                            busy = false
+                            error = "Admin access authorize nahi hai. Admin claim Firebase Admin SDK se set karna hoga."
+                        }
+                    }?.addOnFailureListener {
+                        auth.signOut(); busy = false; error = it.localizedMessage ?: "Admin verification failed."
+                    }
+                } else if (role == UserRole.RETAILER && !active) {
+                    busy = false
+                    onAuthenticated(savedName, phone, true)
+                } else if (!active) {
+                    auth.signOut(); busy = false; error = "Account inactive hai. Admin se contact karein."
+                } else {
+                    busy = false
+                    onAuthenticated(savedName, phone, false)
+                }
+            }
+            .addOnFailureListener {
+                auth.signOut()
+                busy = false
+                error = it.localizedMessage ?: "Profile load nahi ho payi. Firestore rules check karein."
+            }
+    }
+
+    fun submit() {
+        error = ""
+        if (!mobile.matches(Regex("[6-9][0-9]{9}"))) {
+            error = "Valid 10-digit mobile number enter karein."
+            return
+        }
+        if (password.length < 6) {
+            error = "Password kam se kam 6 characters ka hona chahiye."
+            return
+        }
+        if (isRegister && name.isBlank()) {
+            error = if (role == UserRole.RETAILER) "Business / owner name enter karein." else "Apna naam enter karein."
+            return
+        }
+        if (isRegister && password != confirmPassword) {
+            error = "Password aur confirm password match nahi kar rahe."
+            return
+        }
+        busy = true
+        val emailAlias = authEmail(mobile)
+        if (isRegister) {
+            if (isAdmin) { busy = false; error = "Admin registration app se allowed nahi hai."; return }
+            auth.createUserWithEmailAndPassword(emailAlias, password)
+                .addOnSuccessListener { result ->
+                    val isRetailer = role == UserRole.RETAILER
+                    val profile = hashMapOf<String, Any>(
+                        "name" to name.trim(),
+                        "phoneNumber" to mobile,
+                        "role" to role.name.lowercase(Locale.ROOT),
+                        "active" to !isRetailer,
+                        "status" to if (isRetailer) "pending" else "active",
+                        "createdAt" to FieldValue.serverTimestamp()
+                    )
+                    db.collection("users").document(result.user!!.uid).set(profile)
+                        .addOnSuccessListener {
+                            busy = false
+                            onAuthenticated(name.trim(), mobile, isRetailer)
+                        }
+                        .addOnFailureListener { e ->
+                            result.user?.delete()
+                            busy = false
+                            error = e.localizedMessage ?: "Profile save nahi hui. Firestore rules check karein."
+                        }
+                }
+                .addOnFailureListener { busy = false; error = it.localizedMessage ?: "Registration failed." }
+        } else {
+            auth.signInWithEmailAndPassword(emailAlias, password)
+                .addOnSuccessListener { result -> finishLogin(result.user!!.uid) }
+                .addOnFailureListener { busy = false; error = "Mobile number ya password galat hai. ${it.localizedMessage ?: ""}" }
+        }
+    }
+
     Column(
         Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
         TextButton(onClick = onBack) { Text("← Back") }
-        Spacer(Modifier.height(30.dp))
-
+        Spacer(Modifier.height(12.dp))
         Text(
-            "Enter your mobile number",
-            fontSize = 25.sp,
+            when (role) {
+                UserRole.CUSTOMER -> "Customer account"
+                UserRole.RETAILER -> "Retailer account"
+                UserRole.ADMIN -> "Admin login"
+            },
+            fontSize = 26.sp,
             color = Navy,
             fontWeight = FontWeight.ExtraBold
         )
-
         Text(
-            if (role == UserRole.CUSTOMER)
-                "Customer account"
-            else
-                "Retailer registration",
-            color = Blue,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            "We will send a one-time password to verify your number.",
+            if (isRegister) "Create your account using mobile number and password."
+            else "Login with your registered mobile number and password.",
             color = Color.Gray
         )
-
+        if (isRegister) {
+            OutlinedTextField(
+                value = name, onValueChange = { name = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(if (role == UserRole.RETAILER) "Business / owner name" else "Full name") },
+                singleLine = true, shape = RoundedCornerShape(14.dp)
+            )
+        }
         OutlinedTextField(
             value = mobile,
-            onValueChange = {
-                if (it.length <= 10 && it.all(Char::isDigit)) {
-                    onMobile(it)
-                }
-            },
+            onValueChange = { if (it.length <= 10 && it.all(Char::isDigit)) mobile = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("10-digit mobile number") },
-            prefix = { Text("+91  ") },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Phone
-            ),
-            singleLine = true,
-            shape = RoundedCornerShape(14.dp)
+            label = { Text("10-digit mobile number") }, prefix = { Text("+91  ") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            singleLine = true, shape = RoundedCornerShape(14.dp)
         )
-
-        Button(
-            onClick = onContinue,
-            enabled = mobile.matches(Regex("[6-9][0-9]{9}")),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            Text("Continue to OTP")
-        }
-
-        Text(
-            "OTP delivery will be enabled after secure Firebase phone authentication setup.",
-            color = Color.Gray,
-            fontSize = 11.sp
-        )
-    }
-}
-
-@Composable
-private fun OtpScreen(
-    mobile: String,
-    otp: String,
-    onOtp: (String) -> Unit,
-    onBack: () -> Unit,
-    onVerify: () -> Unit
-) {
-    Column(
-        Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        TextButton(onClick = onBack) { Text("← Back") }
-        Spacer(Modifier.height(30.dp))
-
-        Text(
-            "Verify your number",
-            fontSize = 25.sp,
-            color = Navy,
-            fontWeight = FontWeight.ExtraBold
-        )
-
-        Text("Enter the 6-digit OTP sent to +91 $mobile", color = Color.Gray)
-
         OutlinedTextField(
-            value = otp,
-            onValueChange = {
-                if (it.length <= 6 && it.all(Char::isDigit)) {
-                    onOtp(it)
-                }
-            },
+            value = password, onValueChange = { password = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("6-digit OTP") },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number
-            ),
-            singleLine = true,
-            shape = RoundedCornerShape(14.dp)
+            label = { Text("Password (minimum 6 characters)") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true, shape = RoundedCornerShape(14.dp)
         )
-
+        if (isRegister) {
+            OutlinedTextField(
+                value = confirmPassword, onValueChange = { confirmPassword = it },
+                modifier = Modifier.fillMaxWidth(), label = { Text("Confirm password") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true, shape = RoundedCornerShape(14.dp)
+            )
+        }
         Button(
-            onClick = onVerify,
-            enabled = false,
+            onClick = { submit() }, enabled = !busy,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text("Firebase setup required")
+            if (busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+            else Text(if (isRegister) "Create account" else "Login")
         }
-
+        if (!isAdmin) {
+            TextButton(onClick = { isRegister = !isRegister; error = "" }) {
+                Text(if (isRegister) "Already registered? Login" else "New here? Create account")
+            }
+        }
+        if (!isRegister) {
+            TextButton(onClick = {
+                error = "Password reset ke liye CitySeva Admin se contact karein. OTP/SMS reset enabled nahi hai."
+            }) {
+                Text("Forgot password?")
+            }
+        }
+        if (role == UserRole.RETAILER) {
+            Text("Retailer registration ke baad Admin approval zaroori hai.", color = Blue, fontSize = 12.sp)
+        }
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
         Text(
-            "This is the OTP screen preview. Real SMS verification is not active until Firebase is connected.",
-            color = Orange,
-            fontSize = 11.sp
+            "OTP/SMS login use nahi hota. Password Firebase Authentication mein securely store hota hai. Password bhoolne par admin support se reset karwayein.",
+            color = Color.Gray, fontSize = 11.sp
         )
     }
 }
@@ -744,20 +819,12 @@ private fun GalleryScreen(
     ) {
         TextButton(onClick = onBack) { Text("← Back to services") }
 
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(170.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(Color(0xFFFFD8C4), Color(0xFF8E69E8))
-                    )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(service.emoji, fontSize = 76.sp)
-        }
+        Image(
+            painter = painterResource(service.images.first()),
+            contentDescription = service.name,
+            modifier = Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(22.dp)),
+            contentScale = ContentScale.Crop
+        )
 
         Text(
             service.name,
@@ -775,24 +842,16 @@ private fun GalleryScreen(
             fontSize = 18.sp
         )
 
-        Text(
-            "Decoration and service photos will appear here. We will add a separate gallery for every service.",
-            color = Color.Gray,
-            fontSize = 12.sp
-        )
+        Text("Service photos", color = Ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf("✨", "🎉", "🌸").forEach { mark ->
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .height(78.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(mark, fontSize = 32.sp)
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            service.images.drop(1).forEachIndexed { index, imageId ->
+                Image(
+                    painter = painterResource(imageId),
+                    contentDescription = "${service.name} photo ${index + 2}",
+                    modifier = Modifier.weight(1f).height(82.dp).clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
 

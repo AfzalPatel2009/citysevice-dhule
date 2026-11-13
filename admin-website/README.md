@@ -3,7 +3,7 @@
 A responsive React + Vite admin console for the existing Firebase project `cityseva-dhule`.
 
 ## Included
-- Firebase Phone Authentication with reCAPTCHA
+- Firebase Email/Password Authentication using mobile-number login aliases (no OTP/SMS)
 - Admin-only access using a trusted Firebase custom claim (`admin: true`)
 - Live dashboard counts and request activity
 - Retailer approve / reject / deactivate controls
@@ -32,16 +32,13 @@ npm run dev
 ```
 Open the local URL printed by Vite.
 
-## 3. Enable Phone sign-in
-In Firebase Console:
-1. Authentication → Sign-in method → Phone: enabled.
-2. Authentication → Settings → Authorized domains: add your Firebase Hosting domain (for example `cityseva-dhule.web.app`) and your custom domain if used.
-3. Configure SMS region policy to allow India and review Firebase phone-auth quotas/billing.
+## 3. Enable Email/Password sign-in
+In Firebase Console → Authentication → Sign-in method, enable **Email/Password**. Phone Authentication is not used by this app and no OTP/SMS is sent. Add your Firebase Hosting domain to Authorized domains.
 
 ## 4. Give your own phone account admin access (required)
-A Firestore document with `role: "admin"` is NOT sufficient to authorize this website. The website checks the Firebase Authentication custom claim `admin: true`.
+A Firestore document with `role: "admin"` is NOT sufficient to authorize this website. The website checks the Firebase Authentication custom claim `admin: true`. Admin accounts must be created by a trusted administrator; public app registration cannot create an admin.
 
-After you have signed in once with your own phone number on the website and the Firebase Authentication user exists:
+First create the admin Firebase Authentication account using Email/Password. The login email alias for mobile `9876543210` is `919876543210@cityseva.app`. Use a strong password and keep it private. Then assign the admin custom claim:
 
 1. Create a service account key in Firebase Console → Project settings → Service accounts → Generate new private key. Keep it private; never upload it to GitHub or put it in the website.
 2. On your own trusted computer, set the environment variable:
@@ -50,10 +47,10 @@ After you have signed in once with your own phone number on the website and the 
    - macOS/Linux:
      `export GOOGLE_APPLICATION_CREDENTIALS="/secure/service-account.json"`
 3. From this project folder run:
-   `npm run set-admin -- +91YOURMOBILENUMBER`
+   `npm run set-admin -- YOUR10DIGITMOBILENUMBER`
 4. Sign out and sign back in to the admin website.
 
-Only the trusted Admin SDK script can grant this claim. Never expose a service-account JSON in browser code.
+The script also creates/updates the matching `users/{uid}` admin profile needed by the Android app. Only the trusted Admin SDK script can grant this claim. Never expose a service-account JSON in browser code.
 
 ## 5. Firestore rules
 The included `firestore.rules` is a secure starter:
